@@ -76,6 +76,7 @@ class PushEstimator:
                  last_str_from_stdout: bool = False,
                  interpreter: PushInterpreter = "default",
                  parallelism: Union[int, bool] = False,
+                 error_threshold: float = 0.0,
                  push_config: PushConfig = "default",
                  verbose: int = 0,
                  **kwargs):
@@ -90,6 +91,7 @@ class PushEstimator:
         self.last_str_from_stdout = last_str_from_stdout
         self.parallelism = parallelism
         self.verbose = verbose
+        self.error_threshold = error_threshold
         self.ext = kwargs
         set_verbosity(self.verbose)
 
@@ -128,7 +130,9 @@ class PushEstimator:
             initial_genome_size=self.initial_genome_size,
             simplification_steps=self.simplification_steps,
             parallelism=self.parallelism,
-            push_config=self.push_config
+            error_threshold=self.error_threshold,
+            push_config=self.push_config,
+
         )
         self.search = sr.get_search_algo(self._search_name, config=search_config, **self.ext)
 

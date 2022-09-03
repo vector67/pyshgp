@@ -26,6 +26,7 @@ from pyshgp.push.atoms import Atom, CodeBlock, Closer, Literal, InstructionMeta,
 from pyshgp.push.type_library import infer_literal
 from pyshgp.tap import tap
 from pyshgp.utils import DiscreteProbDistrib
+from itertools import combinations
 
 
 class Opener(PRecord):
@@ -303,7 +304,7 @@ class GenomeSimplifier:
     def _remove_rand_genes(self, genome: Genome) -> Genome:
         # @todo DRY with deletion variation operator.
         gn = genome
-        n_genes_to_remove = min(np.random.randint(1, 4), len(genome) - 1)
+        n_genes_to_remove = min(np.random.randint(2, 4), len(genome) - 1)
         ndx_of_genes_to_remove = np.random.choice(np.arange(len(gn)), n_genes_to_remove, replace=False)
         ndx_of_genes_to_remove[::-1].sort()
         for ndx in ndx_of_genes_to_remove:
@@ -318,6 +319,17 @@ class GenomeSimplifier:
     @tap
     def _step(self, genome: Genome, errors_to_beat: np.ndarray) -> Tuple[Genome, np.ndarray]:
         new_gn = self._remove_rand_genes(genome)
+        new_errs = self._errors_of_genome(new_gn)
+        if np.sum(new_errs) <= np.sum(errors_to_beat):
+            return new_gn, new_errs
+        return genome, errors_to_beat
+
+    @tap
+    def _step_sequential(self, genome: Genome, errors_to_beat: np.ndarray, ndx_of_genes_to_remove) -> Tuple[Genome, np.ndarray]:
+        new_gn = genome
+        for ndx in reversed(ndx_of_genes_to_remove):
+            new_gn = new_gn.delete(ndx)
+
         new_errs = self._errors_of_genome(new_gn)
         if np.sum(new_errs) <= np.sum(errors_to_beat):
             return new_gn, new_errs
@@ -347,8 +359,83 @@ class GenomeSimplifier:
         """
         gn = genome
         errs = original_errors
-        for step in range(steps):
-            gn, errs = self._step(gn, errs)
-            if len(gn) == 1:
-                break
+        checked_everything = False
+        num_steps_taken = 0
+        previous_step_found = 0
+        while not checked_everything:
+            previous_len = len(gn)
+            for step in range(len(gn)):
+                n_genes_to_remove = [(step + previous_step_found) % len(gn)]
+                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
+                num_steps_taken += 1
+                if not previous_len == len(gn):
+                    previous_step_found = step
+                    print('found simplification on', step)
+                    break
+            else:
+                checked_everything = True
+        print('tried everything until', len(gn))
+
+        if len(gn) <= 12:
+            checked_everything = False
+            while not checked_everything:
+                combinations_list = []
+                for i in range(1, min(len(gn), 4)):
+                    n_genes_to_remove_list = combinations([x for x in range(len(gn))], i)
+                    found_simplification = False
+                    for n_genes_to_remove in n_genes_to_remove_list:
+                        print(n_genes_to_remove)
+                        print(gn)
+                        gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
+
+                        num_steps_taken += 1
+                        if not previous_len == len(gn):
+                            print('found simplification on', n_genes_to_remove)
+                            found_simplification = True
+                            break
+                    if found_simplification:
+                        break
+                else:
+                    checked_everything = True
+        else:
+            for step in range(steps - num_steps_taken):
+                gn, errs = self._step(gn, errs)
+                if len(gn) == 1:
+                    break
+        return gn, errs
+
+    @tap
+    def simplify_quick(self,
+                 genome: Genome,
+                 original_errors: np.ndarray) -> Tuple[Genome, np.ndarray]:
+        """Simplify the given genome while maintaining error.
+
+        Parameters
+        ----------
+        genome
+            The Genome to simplify.
+        original_errors
+            Error vector of the genome to simplify.
+        steps
+            Number of simplification iterations to perform. Default is 2000.
+
+        Returns
+        -------
+        pyshgp.gp.genome.Genome
+            The shorter Genome that expresses the same computation.
+
+        """
+        gn = genome
+        errs = original_errors
+        checked_everything = False
+
+        while not checked_everything:
+            previous_len = len(gn)
+            for step in range(len(gn) - 1):
+                n_genes_to_remove = [step]
+                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
+                if not previous_len == len(gn):
+                    break
+            else:
+                checked_everything = True
         return gn, errs

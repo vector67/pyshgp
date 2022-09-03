@@ -410,3 +410,4 @@ def set_verbosity(level: int):
                                                                               pre_print_atoms=True,
                                                                               post_print_best=True))
         TapManager.register("pyshgp.gp.genome.GenomeSimplifier._step", StdOutSimplificationStep())
+        TapManager.register("pyshgp.gp.genome.GenomeSimplifier._step_sequential", StdOutSimplificationStep())
