@@ -362,6 +362,7 @@ class GenomeSimplifier:
         checked_everything = False
         num_steps_taken = 0
         previous_step_found = 0
+        original_length = len(gn)
         while not checked_everything:
             previous_len = len(gn)
             for step in range(len(gn)):
@@ -370,33 +371,32 @@ class GenomeSimplifier:
                 num_steps_taken += 1
                 if not previous_len == len(gn):
                     previous_step_found = step
-                    print('found simplification on', step)
                     break
             else:
                 checked_everything = True
-        print('tried everything until', len(gn))
+        print('Tried to simplify by removing one gene and removed', original_length - len(gn), 'genes')
 
         if len(gn) <= 12:
+            new_length = len(gn)
             checked_everything = False
             while not checked_everything:
                 combinations_list = []
-                for i in range(1, min(len(gn), 4)):
+                for i in range(2, min(len(gn), 5)):
                     n_genes_to_remove_list = combinations([x for x in range(len(gn))], i)
                     found_simplification = False
+                    previous_len = len(gn)
                     for n_genes_to_remove in n_genes_to_remove_list:
-                        print(n_genes_to_remove)
-                        print(gn)
                         gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
 
                         num_steps_taken += 1
                         if not previous_len == len(gn):
-                            print('found simplification on', n_genes_to_remove)
                             found_simplification = True
                             break
                     if found_simplification:
                         break
                 else:
                     checked_everything = True
+            print('Tried to simplify by removing combinations of genes and removed', new_length - len(gn), 'genes')
         else:
             for step in range(steps - num_steps_taken):
                 gn, errs = self._step(gn, errs)

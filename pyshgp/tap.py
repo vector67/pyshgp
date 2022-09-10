@@ -13,6 +13,7 @@ import csv
 import inspect
 import json
 import os
+import sys
 from datetime import datetime
 
 import numpy as np
@@ -316,6 +317,7 @@ class StdOutSimplificationStep(Tap):
                 diff=orig_len - new_len,
                 ln=new_len
             ))
+            sys.stdout.flush()
 
 
 class TapManager:
