@@ -1,11 +1,14 @@
-import pandas as pd
-import pytest
 import numpy as np
+import pandas as pd
 
 from pyshgp.gp.evaluation import (
     damerau_levenshtein_distance, DatasetEvaluator, FunctionEvaluator
 )
+from pyshgp.push.config import PushConfig
+from pyshgp.push.interpreter import PushInterpreter
+from pyshgp.push.program import ProgramSignature
 from pyshgp.utils import Token
+from tests.support import get_program
 
 
 def test_levenshtein_distance_str():
@@ -44,6 +47,23 @@ class TestDatasetEvaluator:
         assert np.all(np.equal(
             evaluator.evaluate(simple_program),
             np.array([0, 5, 0])
+        ))
+
+    def test_difficult_program(self, push_config: PushConfig, interpreter: PushInterpreter):
+        name = "median"
+        sig = ProgramSignature(arity=3, output_stacks=["int"], push_config=push_config)
+        prog = get_program(name, sig, interpreter)
+        assert prog.pretty_str() == "(input_1 input_2 int_lt input_2 input_0 int_lt bool_eq " \
+                                    "input_2 input_0 int_lt input_0 input_1 int_lt bool_eq " \
+                                    "bool_swap exec_if input_2 (exec_if input_0 input_1))"
+
+        evaluator = DatasetEvaluator(
+            [[5, 2, 6], [5, 2, 3], [5, 2, 1], [5, 7, 8], [5, 7, 6], [5, 7, 3]],
+            [5, 3, 2, 7, 6, 5]
+        )
+        assert np.all(np.equal(
+            evaluator.evaluate(prog),
+            np.array([0, 0, 0, 0, 0, 0])
         ))
 
 

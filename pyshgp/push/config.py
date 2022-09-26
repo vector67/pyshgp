@@ -8,13 +8,13 @@ A block of Push code can produce different behavior under different ``PushConfig
 the ``PushConfig`` used to produce a solution program must be a part of the definition of a push ``Program``.
 
 """
-from collections import Sequence
+from collections.abc import Sequence
 from typing import Union
 
 from pyrsistent import PRecord, field
 
 
-class PushConfig(PRecord):
+class PushConfig:
     """A configuration for a Push program.
 
     Attributes
@@ -35,11 +35,19 @@ class PushConfig(PRecord):
 
     """
 
-    step_limit = field(type=int, initial=500, mandatory=True)
-    runtime_limit = field(type=int, initial=10, mandatory=True)
-    growth_cap = field(type=int, initial=500, mandatory=True)
-    collection_size_cap = field(type=int, initial=1000, mandatory=True)
-    numeric_magnitude_limit = field(type=float, initial=1e12, mandatory=True)
+    step_limit: int = 500
+    runtime_limit: int = 10
+    growth_cap: int = 500
+    collection_size_cap: int = 1000
+    numeric_magnitude_limit: float = 1e12
+
+    def __init__(self, step_limit=500, runtime_limit=10, growth_cap=500, collection_size_cap=1000,
+                 numeric_magnitude_limit=1e12):
+        self.step_limit = step_limit
+        self.runtime_limit = runtime_limit
+        self.growth_cap = growth_cap
+        self.collection_size_cap = collection_size_cap
+        self.numeric_magnitude_limit = numeric_magnitude_limit
 
 
 def constrain_collection(config: PushConfig, coll: Sequence) -> Sequence:

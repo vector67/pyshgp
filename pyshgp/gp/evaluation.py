@@ -1,4 +1,5 @@
 """The :mod:`evaluation` module defines classes to evaluate program CodeBlocks."""
+import time
 from abc import ABC, abstractmethod
 from typing import Sequence, Union, Callable
 from collections import defaultdict

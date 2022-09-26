@@ -1,0 +1,24 @@
+[
+  {"a": "input", "i": 1},
+  {"a": "input", "i": 2},
+  {"a": "instr", "n": "int_lt"},
+  {"a": "input", "i": 2},
+  {"a": "input", "i": 0},
+  {"a": "instr", "n": "int_lt"},
+  {"a": "instr", "n": "bool_eq"},
+  {"a": "input", "i": 2},
+  {"a": "input", "i": 0},
+  {"a": "instr", "n": "int_lt"},
+  {"a": "input", "i": 0},
+  {"a": "input", "i": 1},
+  {"a": "instr", "n": "int_lt"},
+  {"a": "instr", "n": "bool_eq"},
+  {"a": "instr", "n": "bool_swap"},
+  {"a": "instr", "n": "exec_if"},
+  {"a": "input", "i": 2},
+  [
+    {"a": "instr", "n": "exec_if"},
+    {"a": "input", "i": 0},
+    {"a": "input", "i": 1}
+  ]
+]

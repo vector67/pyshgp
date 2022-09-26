@@ -277,9 +277,20 @@ class GeneticAlgorithm(SearchAlgorithm):
 
         """
         super().step()
+        #
+        # simplifier = GenomeSimplifier(
+        #     self.config.evaluator,
+        #     self.config.signature
+        # )
+        # simp_genome, simp_error_vector = simplifier.simplify(
+        #     self.best_seen.genome,
+        #     self.best_seen.error_vector,
+        #     self.config.simplification_steps
+        # )
         self.population = Population(
             [self._make_child() for _ in range(self.config.population_size)]
         )
+        # self.population.add(Individual(simp_genome, self.config.signature))
 
 
 class SimulatedAnnealing(SearchAlgorithm):

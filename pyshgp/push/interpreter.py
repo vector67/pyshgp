@@ -202,5 +202,10 @@ class PushInterpreter:
 
         if print_trace:
             print("Finished program evaluation.")
-
+        # for stack in program.signature.output_stacks:
+        #     print('got a stack', stack)
+        #     if stack == "stdout":
+        #         print(self.state.stdout)
+        #     else:
+        #         print(self.state[stack])
         return self.state.observe_stacks(program.signature.output_stacks)

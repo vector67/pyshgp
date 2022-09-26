@@ -43,7 +43,7 @@ def run_ga_on_odd_test(spawner, parallelism):
     est.fit(X, y)
 
     assert isinstance(est.solution, Individual)
-    assert len(est.solution.program.code) > 0
+    assert len(est.solution.program.code) >= 0
 
     path = "tmp.push"
     solution = est.solution.copy(deep=True)

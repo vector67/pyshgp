@@ -13,6 +13,7 @@ shrinking the size of the serialized solution, and in some cases making the prog
 """
 from __future__ import annotations
 
+import random
 from enum import Enum
 from typing import Sequence, Union, Any, Callable, Tuple
 
@@ -301,12 +302,13 @@ class GenomeSimplifier:
         self.evaluator = evaluator
         self.program_signature = program_signature
 
-    def _remove_rand_genes(self, genome: Genome) -> Genome:
+    def _remove_rand_genes(self, genome: Genome, include_one: bool = False) -> Genome:
         # @todo DRY with deletion variation operator.
         gn = genome
-        n_genes_to_remove = min(np.random.randint(2, 4), len(genome) - 1)
+        n_genes_to_remove = min(np.random.randint(1 if include_one else 2, 4), len(genome) - 1)
         ndx_of_genes_to_remove = np.random.choice(np.arange(len(gn)), n_genes_to_remove, replace=False)
         ndx_of_genes_to_remove[::-1].sort()
+        print('Trying to remove', ndx_of_genes_to_remove)
         for ndx in ndx_of_genes_to_remove:
             gn = gn.delete(ndx)
         return gn
@@ -317,20 +319,23 @@ class GenomeSimplifier:
         return self.evaluator.evaluate(program)
 
     @tap
-    def _step(self, genome: Genome, errors_to_beat: np.ndarray) -> Tuple[Genome, np.ndarray]:
-        new_gn = self._remove_rand_genes(genome)
+    def _step(self, genome: Genome, errors_to_beat: np.ndarray, include_one: bool = False) -> Tuple[Genome, np.ndarray]:
+        new_gn = self._remove_rand_genes(genome, include_one)
         new_errs = self._errors_of_genome(new_gn)
         if np.sum(new_errs) <= np.sum(errors_to_beat):
+            print('simplified to', np.sum(new_errs), new_errs)
             return new_gn, new_errs
         return genome, errors_to_beat
 
     @tap
-    def _step_sequential(self, genome: Genome, errors_to_beat: np.ndarray, ndx_of_genes_to_remove) -> Tuple[Genome, np.ndarray]:
+    def _step_sequential(self, genome: Genome, errors_to_beat: np.ndarray, ndx_of_genes_to_remove, printing) -> Tuple[Genome, np.ndarray]:
         new_gn = genome
         for ndx in reversed(ndx_of_genes_to_remove):
             new_gn = new_gn.delete(ndx)
 
         new_errs = self._errors_of_genome(new_gn)
+        if printing:
+            print('Error of that attempt was', np.sum(new_errs), new_errs)
         if np.sum(new_errs) <= np.sum(errors_to_beat):
             return new_gn, new_errs
         return genome, errors_to_beat
@@ -363,45 +368,73 @@ class GenomeSimplifier:
         num_steps_taken = 0
         previous_step_found = 0
         original_length = len(gn)
+        printing = True  # if random.random() > 0.99 else False
+        if printing:
+            print('Tasked with simplifying, starting with removing 1 at a time. Initial error is:', np.sum(errs), errs)
         while not checked_everything:
+            if printing:
+                print('Genome is', len(gn), 'long')
             previous_len = len(gn)
             for step in range(len(gn)):
                 n_genes_to_remove = [(step + previous_step_found) % len(gn)]
-                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
+                if printing:
+                    print('Trying to remove item', (step + previous_step_found) % len(gn))
+                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove, printing)
                 num_steps_taken += 1
                 if not previous_len == len(gn):
-                    previous_step_found = step
+                    previous_step_found = step + previous_step_found
+                    if printing:
+                        print('new program', genome_to_code(gn).pretty_str())
                     break
             else:
                 checked_everything = True
-        print('Tried to simplify by removing one gene and removed', original_length - len(gn), 'genes')
+        if printing:
+            print('Tried to simplify by removing one gene and removed', original_length - len(gn), 'genes')
 
         if len(gn) <= 12:
-            new_length = len(gn)
-            checked_everything = False
-            while not checked_everything:
-                combinations_list = []
-                for i in range(2, min(len(gn), 5)):
-                    n_genes_to_remove_list = combinations([x for x in range(len(gn))], i)
-                    found_simplification = False
-                    previous_len = len(gn)
-                    for n_genes_to_remove in n_genes_to_remove_list:
-                        gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
-
-                        num_steps_taken += 1
-                        if not previous_len == len(gn):
-                            found_simplification = True
-                            break
-                    if found_simplification:
-                        break
-                else:
-                    checked_everything = True
-            print('Tried to simplify by removing combinations of genes and removed', new_length - len(gn), 'genes')
+            gn, errs = self.combination_simplify(gn, errs, printing)
         else:
+            include_one = False
+            start_gn = len(gn)
             for step in range(steps - num_steps_taken):
-                gn, errs = self._step(gn, errs)
+                gn, errs = self._step(gn, errs, include_one)
+                if len(gn) < start_gn:
+                    include_one = True
                 if len(gn) == 1:
                     break
+                if len(gn) < 12:
+                    gn, errs = self.combination_simplify(gn, errs, printing)
+                    break
+        if printing:
+            print('new program', genome_to_code(gn).pretty_str())
+        return gn, errs
+
+    def combination_simplify(self, gn, errs, printing):
+        new_length = len(gn)
+        if printing:
+            print('Initiating combination simplify at', new_length)
+        checked_everything = False
+        while not checked_everything:
+            for i in range(2, min(len(gn), 5)):
+                n_genes_to_remove_list = combinations([x for x in range(len(gn))], i)
+                found_simplification = False
+                previous_len = len(gn)
+                for n_genes_to_remove in n_genes_to_remove_list:
+                    if printing:
+                        print('Trying to remove genome indices:', n_genes_to_remove)
+                    gn, errs = self._step_sequential(gn, errs, n_genes_to_remove, printing)
+
+                    if not previous_len == len(gn):
+                        if printing:
+                            print('new program', genome_to_code(gn).pretty_str())
+                        found_simplification = True
+                        break
+                if found_simplification:
+                    break
+            else:
+                checked_everything = True
+        if printing:
+            print('Tried to simplify by removing combinations of genes and removed', new_length - len(gn), 'genes')
         return gn, errs
 
     @tap
@@ -433,7 +466,7 @@ class GenomeSimplifier:
             previous_len = len(gn)
             for step in range(len(gn) - 1):
                 n_genes_to_remove = [step]
-                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove)
+                gn, errs = self._step_sequential(gn, errs, n_genes_to_remove, True)
                 if not previous_len == len(gn):
                     break
             else:
